@@ -38,7 +38,7 @@
       </div>
     </a>
 
-    <a href="/kid/select" class="group relative bg-white p-10 rounded-[3.5rem] shadow-xl border-b-[12px] border-pink-500 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 active:translate-y-0 active:border-b-4 text-left flex flex-col gap-6">
+    <a href="/kid/login" class="group relative bg-white p-10 rounded-[3.5rem] shadow-xl border-b-[12px] border-pink-500 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 active:translate-y-0 active:border-b-4 text-left flex flex-col gap-6">
       <div class="bg-pink-100 text-pink-600 p-5 rounded-[2rem] w-fit group-hover:rotate-12 transition-transform shadow-inner">
         <Smile size={40} />
       </div>

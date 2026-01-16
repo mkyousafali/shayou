@@ -1,10 +1,11 @@
 <!-- Page: Kid Home -->
 <script lang="ts">
-  import { Wallet, Target, CheckCircle, ArrowRight, Gamepad2, Brain, Sparkles, Loader2 } from 'lucide-svelte';
+  import { Wallet, Target, CheckCircle, ArrowRight, Gamepad2, Brain, Sparkles, Loader2, LogOut } from 'lucide-svelte';
   import { fade, fly } from 'svelte/transition';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
   import { page } from '$app/state';
+  import { goto } from '$app/navigation';
 
   let loading = $state(true);
   let kidId = page.params.kidId;
@@ -46,6 +47,14 @@
       loading = false;
     }
   }
+
+  function handleLogout() {
+    // Clear session data
+    localStorage.removeItem('kid_id');
+    localStorage.removeItem('family_id');
+    // Go back to login
+    goto('/kid/login');
+  }
 </script>
 
 <div class="space-y-8 pb-20" in:fade>
@@ -55,6 +64,19 @@
       <p class="text-2xl font-black italic tracking-tight">Waking up your world... ✨</p>
     </div>
   {:else}
+    <!-- Header with Logout Button -->
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-3xl font-black text-gray-900">Welcome, {kid.name}! 👋</h1>
+      <button
+        onclick={handleLogout}
+        class="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-2xl font-bold hover:bg-red-100 transition-all active:scale-95"
+        title="Log out"
+      >
+        <LogOut size={20} />
+        <span class="text-sm">Logout</span>
+      </button>
+    </div>
+
     <!-- Hero Wallet Card -->
     <section class="relative overflow-hidden rounded-[3.5rem] bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 p-10 text-white shadow-2xl shadow-blue-100 uppercase italic">
       <div class="relative z-10 flex justify-between items-center">

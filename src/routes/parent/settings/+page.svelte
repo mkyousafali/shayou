@@ -2,6 +2,7 @@
 <script lang="ts">
   import { Settings, User, Bell, Shield, LogOut, ChevronRight, Palette } from 'lucide-svelte';
   import { fade } from 'svelte/transition';
+  import { goto } from '$app/navigation';
 
   const menuItems = [
     { icon: User, label: 'Profile Details', color: 'blue' },
@@ -9,6 +10,13 @@
     { icon: Shield, label: 'Security & Access Code', color: 'yellow' },
     { icon: Palette, label: 'App Theme', color: 'red' }
   ];
+
+  function handleLogout() {
+    // Clear session data
+    localStorage.removeItem('family_id');
+    // Go back to login
+    goto('/login');
+  }
 </script>
 
 <div class="space-y-6" in:fade>
@@ -34,7 +42,7 @@
     {/each}
   </div>
 
-  <button class="w-full bg-red-50 text-red-500 py-6 rounded-[2rem] font-black flex items-center justify-center gap-3 border-2 border-red-100 hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-lg shadow-red-50 mb-10">
+  <button onclick={handleLogout} class="w-full bg-red-50 text-red-500 py-6 rounded-[2rem] font-black flex items-center justify-center gap-3 border-2 border-red-100 hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-lg shadow-red-50 mb-10">
     <LogOut size={24} /> Sign Out
   </button>
 </div>

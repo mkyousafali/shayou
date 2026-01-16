@@ -1,3 +1,4 @@
+
 -- Migration: Login System
 -- This migration enhances the schema to support Parent Supabase Auth 
 -- and 6-digit access code authentication for kids.

@@ -13,14 +13,18 @@
   let errorMessage = $state("");
 
   onMount(async () => {
-    // We assume the parent previously logged in or we ask for family code
+    // Try to get family_id from localStorage (if parent logged in)
+    // OR from URL params (if kid coming from a link)
+    // OR we'll show a screen to find the family
     familyId = localStorage.getItem('family_id');
+    
+    // TODO: If still no family_id, show "Find Your Family" screen
+    // For now, if no family_id, we cannot proceed
     if (!familyId) {
-       // If no family_id, we might need to redirect to parent login first
-       // or a specific "Find Family" screen. For now, go to login.
-       window.location.href = '/login';
+       errorMessage = "Please ask your parent for your family code to get started!";
        return;
     }
+    
     await fetchKids();
   });
 
@@ -87,10 +91,13 @@
       <p class="text-2xl font-black italic">Finding your profiles...</p>
     </div>
   {:else if errorMessage}
-    <div class="bg-red-100 border-2 border-red-400 text-red-700 px-6 py-4 rounded-2xl text-center max-w-md mx-auto mb-8">
-      <p class="font-bold text-lg">{errorMessage}</p>
-      <button onclick={() => { window.location.href = '/login'; }} class="mt-4 bg-red-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-600">
-        Back to Login
+    <div class="bg-yellow-50 border-2 border-yellow-300 text-yellow-800 px-6 py-4 rounded-2xl text-center max-w-md mx-auto mb-8 space-y-4">
+      <p class="font-bold text-lg">🔍 {errorMessage}</p>
+      <button onclick={() => { window.location.href = '/kid/find-family'; }} class="w-full mt-4 bg-yellow-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-600 transition-all">
+        ✨ Enter Family Code
+      </button>
+      <button onclick={() => { window.location.href = '/'; }} class="w-full text-yellow-700 px-6 py-2 rounded-lg font-bold hover:bg-yellow-100 transition-all">
+        ← Back Home
       </button>
     </div>
   {:else}
