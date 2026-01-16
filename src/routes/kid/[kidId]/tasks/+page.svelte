@@ -5,10 +5,14 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import Modal from '$lib/components/Modal.svelte';
 
   const { kidId } = page.params;
   let loading = $state(true);
   let tasks = $state<any[]>([]);
+  let showSuccessModal = $state(false);
+  let showErrorModal = $state(false);
+  let errorMessage = $state('');
 
   onMount(async () => {
     await fetchTasks();
@@ -44,10 +48,11 @@
       // Update local state
       tasks = tasks.map(t => t.id === taskId ? { ...t, status: 'pending' } : t);
       
-      alert("Task submitted! Mom or Dad will check it soon! ✨");
+      showSuccessModal = true;
     } catch (e) {
       console.error('Error updating task:', e);
-      alert("Oops! Could not submit task. Try again!");
+      errorMessage = 'Could not submit task. Please try again!';
+      showErrorModal = true;
     }
   }
 
@@ -137,4 +142,20 @@
       <Star size={120} strokeWidth={3} />
     </div>
   </div>
+
+  <Modal
+    visible={showSuccessModal}
+    title="Task Submitted!"
+    message="Great job! Mom or Dad will check it soon! ✨"
+    icon="success"
+    onClose={() => showSuccessModal = false}
+  />
+
+  <Modal
+    visible={showErrorModal}
+    title="Oops!"
+    message={errorMessage}
+    icon="error"
+    onClose={() => showErrorModal = false}
+  />
 </div>

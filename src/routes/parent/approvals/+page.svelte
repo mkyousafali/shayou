@@ -4,10 +4,15 @@
   import { fade, slide } from 'svelte/transition';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import Modal from '$lib/components/Modal.svelte';
 
   let loading = $state(true);
   let familyId = $state('');
   let approvals = $state<any[]>([]);
+  let showSuccessModal = $state(false);
+  let successMessage = $state('');
+  let showErrorModal = $state(false);
+  let errorMessage = $state('');
 
   onMount(async () => {
     familyId = localStorage.getItem('family_id');
@@ -70,10 +75,12 @@
       
       // Update local state
       approvals = approvals.filter(a => a.id !== task.id);
-      alert(`${task.kids.name}'s reward of ${task.reward} coins has been added! ✨`);
+      successMessage = `${task.kids.name}'s reward of ${task.reward} coins has been added! ✨`;
+      showSuccessModal = true;
     } catch (e) {
       console.error('Approval failed:', e);
-      alert("Failed to approve task. Please try again.");
+      errorMessage = 'Failed to approve task. Please try again.';
+      showErrorModal = true;
     }
   }
 
@@ -156,4 +163,20 @@
       {/each}
     </div>
   {/if}
+
+  <Modal
+    visible={showSuccessModal}
+    title="Task Approved!"
+    message={successMessage}
+    icon="success"
+    onClose={() => showSuccessModal = false}
+  />
+
+  <Modal
+    visible={showErrorModal}
+    title="Error"
+    message={errorMessage}
+    icon="error"
+    onClose={() => showErrorModal = false}
+  />
 </div>

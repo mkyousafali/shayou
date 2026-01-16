@@ -4,15 +4,20 @@
   import { fade, fly } from 'svelte/transition';
   import { page } from '$app/state';
   import { supabase } from '$lib/supabase';
+  import Modal from '$lib/components/Modal.svelte';
 
   const { kidId } = page.params;
   let amount = $state('');
   let reason = $state('');
   let loading = $state(false);
+  let showErrorModal = $state(false);
+  let errorMessage = $state('');
+  let showSuccessModal = $state(false);
 
   async function sendRequest() {
     if (!amount || !reason) {
-      alert("Please enter how much and what for!");
+      errorMessage = 'Please enter how much and what for!';
+      showErrorModal = true;
       return;
     }
 
@@ -29,11 +34,14 @@
 
       if (error) throw error;
 
-      alert(`Sent request for 🪙 ${amount} to Mom/Dad! ✨`);
-      window.location.href = `/kid/${kidId}/home`;
+      showSuccessModal = true;
+      setTimeout(() => {
+        window.location.href = `/kid/${kidId}/home`;
+      }, 1500);
     } catch (e) {
       console.error('Error sending request:', e);
-      alert("Oops! Could not send request. Try again!");
+      errorMessage = 'Could not send request. Please try again!';
+      showErrorModal = true;
     } finally {
       loading = false;
     }
@@ -97,4 +105,20 @@
       They'll get a notification right away!
     </p>
   </div>
+
+  <Modal
+    visible={showErrorModal}
+    title="Missing Information"
+    message={errorMessage}
+    icon="error"
+    onClose={() => showErrorModal = false}
+  />
+
+  <Modal
+    visible={showSuccessModal}
+    title="Request Sent!"
+    message={`Sent request for 🪙 ${amount} to Mom/Dad! ✨`}
+    icon="success"
+    onClose={() => showSuccessModal = false}
+  />
 </div>

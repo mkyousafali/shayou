@@ -1,9 +1,10 @@
 <!-- Page: Parent Tasks -->
 <script lang="ts">
-  import { Plus, ListTodo, CheckCircle2, Clock, Calendar, Loader2, X } from 'lucide-svelte';
+  import { Plus, ListTodo, CheckCircle2, Clock, Calendar, Loader2, X, Check, XCircle, AlertCircle } from 'lucide-svelte';
   import { fade, fly } from 'svelte/transition';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import Modal from '$lib/components/Modal.svelte';
 
   let activeTab = $state('active'); // 'active', 'completed', 'scheduled'
   let familyId = $state('');
@@ -11,6 +12,13 @@
   let tasks = $state<any[]>([]);
   let loading = $state(true);
   let showAddForm = $state(false);
+  let approvingId = $state('');
+  let showRejectModal = $state(false);
+  let rejectTaskId = $state('');
+  let rejectMessage = $state('');
+  let showErrorModal = $state(false);
+  let errorMessage = $state('');
+  let errorTitle = $state('Error');
   
   // New Task State
   let newTask = $state({
@@ -40,12 +48,16 @@
         // Fetch All Tasks
         const { data: tasksData, error } = await supabase
           .from('tasks')
-          .select('*, kids(name)')
+          .select('*')
           .in('kid_id', kids.map(k => k.id))
           .order('created_at', { ascending: false });
         
         if (error) throw error;
-        tasks = tasksData || [];
+        // Map kid names
+        tasks = (tasksData || []).map(task => ({
+          ...task,
+          kids: { name: kids.find(k => k.id === task.kid_id)?.name }
+        }));
       }
     } catch (e) {
       console.error('Error fetching tasks:', e);
@@ -56,7 +68,9 @@
 
   async function handleAddTask() {
     if (!newTask.title || !newTask.kid_id) {
-      alert("Please enter a title and select a kid!");
+      errorTitle = 'Missing Information';
+      errorMessage = 'Please enter a task title and select a kid!';
+      showErrorModal = true;
       return;
     }
 
@@ -78,6 +92,124 @@
       await fetchData();
     } catch (e) {
       console.error('Error adding task:', e);
+      errorTitle = 'Error Adding Task';
+      errorMessage = e instanceof Error ? e.message : String(e);
+      showErrorModal = true;
+    }
+  }
+
+  async function handleApproveTask(taskId: string) {
+    approvingId = taskId;
+    try {
+      // Find the task to get kid_id and reward
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) throw new Error('Task not found');
+
+      // Update task status to completed
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', taskId);
+
+      if (taskError) throw taskError;
+
+      // Get the kid's current balance
+      const { data: kidData, error: kidError } = await supabase
+        .from('kids')
+        .select('balance')
+        .eq('id', task.kid_id)
+        .single();
+
+      if (kidError) throw kidError;
+
+      // Add reward to kid's balance
+      const newBalance = (kidData.balance || 0) + task.reward;
+      const { error: balanceError } = await supabase
+        .from('kids')
+        .update({ balance: newBalance })
+        .eq('id', task.kid_id);
+
+      if (balanceError) throw balanceError;
+
+      await fetchData();
+    } catch (e) {
+      errorTitle = 'Error Approving Task';
+      errorMessage = e instanceof Error ? e.message : String(e);
+      showErrorModal = true;
+      console.error(e);
+    } finally {
+      approvingId = '';
+    }
+  }
+
+  async function handleRejectTask(taskId: string) {
+    rejectTaskId = taskId;
+    showRejectModal = true;
+    rejectMessage = '';
+  }
+
+  async function confirmRejectRetry() {
+    try {
+      const task = tasks.find(t => t.id === rejectTaskId);
+      if (!task) throw new Error('Task not found');
+
+      // Reset task to available so kid can try again
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'available' })
+        .eq('id', rejectTaskId);
+
+      if (taskError) throw taskError;
+
+      // Get the kid's current balance
+      const { data: kidData, error: kidError } = await supabase
+        .from('kids')
+        .select('balance')
+        .eq('id', task.kid_id)
+        .single();
+
+      if (kidError) throw kidError;
+
+      // Deduct reward from kid's balance
+      const newBalance = (kidData.balance || 0) - task.reward;
+      const { error: balanceError } = await supabase
+        .from('kids')
+        .update({ balance: newBalance })
+        .eq('id', task.kid_id);
+
+      if (balanceError) throw balanceError;
+      
+      rejectMessage = '✅ Task reset! Kid can try again. Coins deducted as penalty.';
+      setTimeout(() => {
+        showRejectModal = false;
+        rejectTaskId = '';
+        rejectMessage = '';
+        fetchData();
+      }, 1500);
+    } catch (e) {
+      rejectMessage = '❌ Error: ' + (e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function confirmRejectDelete() {
+    try {
+      // Delete the task completely
+      const { error: deleteError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', rejectTaskId);
+
+      if (deleteError) throw deleteError;
+      
+      rejectMessage = '🗑️ Task deleted completely.';
+      setTimeout(() => {
+        showRejectModal = false;
+        rejectTaskId = '';
+        rejectMessage = '';
+        fetchData();
+      }, 1500);
+    } catch (e) {
+      rejectMessage = '❌ Error: ' + (e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -85,7 +217,7 @@
   let filteredTasks = $derived(
     tasks.filter(t => {
       if (activeTab === 'active') return t.status === 'available' || t.status === 'pending';
-      if (activeTab === 'completed') return t.status === 'approved';
+      if (activeTab === 'completed') return t.status === 'completed';
       return false;
     })
   );
@@ -136,13 +268,13 @@
           in:fly={{ y: 20, delay: i * 50 }}
           class="bg-white p-6 rounded-[2rem] border-l-[12px] shadow-sm flex items-center justify-between border-blue-400 hover:shadow-md transition-shadow"
         >
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3">
             <div class="bg-blue-100 p-3 rounded-2xl text-blue-600">
               <ListTodo size={24} />
             </div>
             <div>
               <h3 class="font-black text-gray-800 text-xl">{task.title}</h3>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md">{task.kids?.name}</span>
                 <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">{task.category}</span>
                 {#if task.status === 'pending'}
@@ -151,8 +283,26 @@
               </div>
             </div>
           </div>
-          <div class="bg-gray-50 px-4 py-2 rounded-2xl border-2 border-gray-100">
-            <span class="font-black text-2xl text-yellow-500">🪙 {task.reward}</span>
+          <div class="flex items-center gap-3">
+            {#if task.status === 'pending'}
+              <button
+                onclick={() => handleApproveTask(task.id)}
+                disabled={approvingId === task.id}
+                class="bg-green-500 text-white px-4 py-2 rounded-xl font-black hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <Check size={18} /> Approve
+              </button>
+              <button
+                onclick={() => handleRejectTask(task.id)}
+                class="bg-red-500 text-white px-4 py-2 rounded-xl font-black hover:bg-red-600 transition-colors flex items-center gap-2"
+              >
+                <XCircle size={18} /> Reject
+              </button>
+            {:else}
+              <div class="bg-gray-50 px-4 py-2 rounded-2xl border-2 border-gray-100">
+                <span class="font-black text-2xl text-yellow-500">🪙 {task.reward}</span>
+              </div>
+            {/if}
           </div>
         </div>
       {/each}
@@ -196,4 +346,50 @@
       </div>
     </div>
   {/if}
+
+  {#if showRejectModal}
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6" transition:fade>
+      <div class="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-3xl border-b-[16px] border-red-400" in:fly={{ y: 50 }}>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="bg-red-100 p-3 rounded-2xl text-red-600">
+            <AlertCircle size={28} />
+          </div>
+          <h2 class="text-2xl font-black text-gray-900">Reject Task</h2>
+        </div>
+        
+        <p class="text-gray-600 font-bold mb-8">What should we do with this task?</p>
+
+        {#if rejectMessage}
+          <div class="mb-6 p-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-center">
+            <p class="font-black text-sm">{rejectMessage}</p>
+          </div>
+        {/if}
+
+        <div class="flex gap-3 flex-col-reverse">
+          <button
+            onclick={confirmRejectDelete}
+            disabled={rejectMessage !== ''}
+            class="w-full bg-red-500 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-red-100 hover:bg-red-600 transition-colors active:scale-95 disabled:opacity-50"
+          >
+            🗑️ Delete Task
+          </button>
+          <button
+            onclick={confirmRejectRetry}
+            disabled={rejectMessage !== ''}
+            class="w-full bg-blue-500 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-100 hover:bg-blue-600 transition-colors active:scale-95 disabled:opacity-50"
+          >
+            🔄 Allow Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <Modal
+    visible={showErrorModal}
+    title={errorTitle}
+    message={errorMessage}
+    icon="error"
+    onClose={() => showErrorModal = false}
+  />
 </div>

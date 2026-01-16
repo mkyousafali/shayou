@@ -4,10 +4,15 @@
   import { fade, slide } from 'svelte/transition';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import Modal from '$lib/components/Modal.svelte';
 
   let loading = $state(true);
   let familyId = $state('');
   let requests = $state<any[]>([]);
+  let showErrorModal = $state(false);
+  let errorMessage = $state('');
+  let showSuccessModal = $state(false);
+  let successMessage = $state('');
 
   onMount(async () => {
     familyId = localStorage.getItem('family_id');
@@ -52,7 +57,8 @@
         .single();
       
       if ((kidData?.balance || 0) < req.amount) {
-        alert("Kid doesn't have enough coins!");
+        errorMessage = `${req.kids?.name || 'This kid'} doesn't have enough coins!`;
+        showErrorModal = true;
         return;
       }
 
@@ -65,9 +71,12 @@
       await supabase.from('spend_requests').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', req.id);
 
       requests = requests.filter(r => r.id !== req.id);
-      alert("Spend request approved! Coins deducted.");
+      successMessage = 'Spend request approved! Coins deducted.';
+      showSuccessModal = true;
     } catch (e) {
       console.error('Approval failed:', e);
+      errorMessage = 'Could not approve the request. Please try again.';
+      showErrorModal = true;
     }
   }
 
@@ -128,4 +137,20 @@
       {/each}
     </div>
   {/if}
+
+  <Modal
+    visible={showErrorModal}
+    title="Oops!"
+    message={errorMessage}
+    icon="error"
+    onClose={() => showErrorModal = false}
+  />
+
+  <Modal
+    visible={showSuccessModal}
+    title="Request Approved!"
+    message={successMessage}
+    icon="success"
+    onClose={() => showSuccessModal = false}
+  />
 </div>

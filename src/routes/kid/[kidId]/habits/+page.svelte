@@ -3,6 +3,9 @@
   import { ShieldCheck, ShieldAlert, Sparkles, Trophy, Gamepad2, ArrowLeft, Brain, ThumbsUp, ThumbsDown } from 'lucide-svelte';
   import { fade, fly, slide } from 'svelte/transition';
   import { spring } from 'svelte/motion';
+  import Modal from '$lib/components/Modal.svelte';
+
+  let showChallengeModal = $state(false);
 
   // Habit Categories
   const habitLessons = [
@@ -135,7 +138,7 @@
             Go Back
           </button>
           <button 
-            onclick={() => { alert('Quiz Started!'); selectedHabit = null; }}
+            onclick={() => { showChallengeModal = true; }}
             class="flex-[2] bg-blue-500 text-white font-black py-6 rounded-[2.5rem] text-2xl shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             <Trophy size={28} />
@@ -164,4 +167,12 @@
       </div>
     </div>
   </div>
+
+  <Modal
+    visible={showChallengeModal}
+    title="Challenge Started!"
+    message="Quiz Started! Get ready to answer some fun questions about healthy habits. 🚀"
+    icon="success"
+    onClose={() => { showChallengeModal = false; selectedHabit = null; }}
+  />
 </div>

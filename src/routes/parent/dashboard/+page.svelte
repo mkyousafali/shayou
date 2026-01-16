@@ -51,16 +51,23 @@
         
         if (!countError) stats[3].value = pendingCount || 0;
 
-        // Fetch Recent Feed (Approved or Pending)
-        const { data: feedData, error: feedError } = await supabase
+        // Fetch Recent Feed - get all tasks then filter
+        const { data: allTasks, error: feedError } = await supabase
           .from('tasks')
-          .select('*, kids(name)')
-          .in('kid_id', kids.map(k => k.id))
-          .neq('status', 'available')
-          .order('updated_at', { ascending: false })
-          .limit(5);
+          .select('*')
+          .order('updated_at', { ascending: false });
 
-        if (!feedError) recentFeed = feedData || [];
+        if (!feedError && allTasks) {
+          const kidIds = new Set(kids.map(k => k.id));
+          // Filter tasks for this family's kids and only include certain statuses
+          recentFeed = allTasks
+            .filter(t => kidIds.has(t.kid_id) && ['pending', 'completed'].includes(t.status))
+            .slice(0, 5)
+            .map(task => ({
+              ...task,
+              kids: { name: kids.find(k => k.id === task.kid_id)?.name }
+            }));
+        }
       }
 
     } catch (e) {
@@ -78,22 +85,22 @@
       <p class="font-black italic">Loading family records...</p>
     </div>
   {:else}
-    <header class="flex justify-between items-end">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
       <div>
-        <h1 class="text-4xl font-black text-gray-900 tracking-tight">Family Overview</h1>
-        <p class="text-blue-500 font-bold italic">Life Skills & Future Leaders 🚀</p>
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">Family Overview</h1>
+        <p class="text-blue-500 font-bold italic text-sm sm:text-base">Life Skills & Future Leaders 🚀</p>
       </div>
-      <div class="hidden sm:flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-2xl font-black text-sm border-b-4 border-yellow-200 uppercase tracking-widest">
+      <div class="hidden sm:flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-2xl font-black text-xs sm:text-sm border-b-4 border-yellow-200 uppercase tracking-widest">
         <Star size={18} fill="currentColor" /> Assessment Mode
       </div>
     </header>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
       {#each stats as stat, i}
         <div 
           in:fly={{ y: 20, delay: i * 100 }}
-          class="bg-white p-6 rounded-[2.5rem] shadow-sm border-b-4 border-{stat.color}-200 flex flex-col gap-2 hover:shadow-md transition-shadow"
+          class="bg-white p-3 sm:p-4 lg:p-6 rounded-2xl sm:rounded-[2.5rem] shadow-sm border-b-4 border-{stat.color}-200 flex flex-col gap-2 hover:shadow-md transition-shadow"
         >
           <div class="bg-{stat.color}-50 text-{stat.color}-500 p-3 rounded-2xl w-fit">
             <stat.icon size={24} />
@@ -106,7 +113,7 @@
       {/each}
     </div>
 
-    <div class="grid lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
       <!-- Kids List -->
       <div class="lg:col-span-2 space-y-6">
         <div class="flex items-center justify-between px-2">
@@ -140,10 +147,10 @@
       </div>
 
     <!-- Quick Activity -->
-    <div class="bg-white p-8 rounded-[3.5rem] shadow-sm border-b-[12px] border-red-100 flex flex-col justify-between">
+    <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-[3.5rem] shadow-sm border-b-[8px] sm:border-b-[12px] border-red-100 flex flex-col justify-between">
       <div>
-        <h2 class="text-2xl font-black text-gray-800 mb-6">Recent Feed</h2>
-        <div class="space-y-6">
+        <h2 class="text-xl sm:text-2xl font-black text-gray-800 mb-4 sm:mb-6">Recent Feed</h2>
+        <div class="space-y-3 sm:space-y-6">
           {#each recentFeed as activity}
             <div class="flex gap-4">
               <div class="w-2 h-12 {activity.status === 'pending' ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'} rounded-full"></div>
@@ -164,32 +171,32 @@
   </div>
 
   <!-- Life Skills Assessment -->
-  <section class="bg-indigo-900 rounded-[4rem] p-10 text-white shadow-2xl shadow-indigo-200">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+  <section class="bg-indigo-900 rounded-2xl sm:rounded-[4rem] p-4 sm:p-6 lg:p-10 text-white shadow-2xl shadow-indigo-200">
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-6 mb-6 lg:mb-10">
       <div>
-        <h2 class="text-3xl font-black italic tracking-tight">Life Skills Assessment 🧠</h2>
-        <p class="text-indigo-300 font-bold">How the kids are growing this week</p>
+        <h2 class="text-2xl sm:text-3xl font-black italic tracking-tight">Life Skills Assessment 🧠</h2>
+        <p class="text-indigo-300 font-bold text-sm sm:text-base">How the kids are growing this week</p>
       </div>
-      <button class="bg-white text-indigo-900 px-8 py-4 rounded-2xl font-black shadow-lg hover:scale-105 transition-transform">
+      <button class="bg-white text-indigo-900 px-4 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base shadow-lg hover:scale-105 transition-transform whitespace-nowrap">
         View Growth Report
       </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white/10 p-8 rounded-[2.5rem] backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
-        <h4 class="text-indigo-200 font-black uppercase text-xs tracking-widest mb-4">Top Growth</h4>
-        <p class="text-2xl font-black mb-1">Financial Literacy</p>
-        <p class="text-green-400 font-bold">+15% improvement</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+      <div class="bg-white/10 p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-[2.5rem] backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
+        <h4 class="text-indigo-200 font-black uppercase text-xs tracking-widest mb-3 sm:mb-4">Top Growth</h4>
+        <p class="text-lg sm:text-2xl font-black mb-1">Financial Literacy</p>
+        <p class="text-green-400 font-bold text-sm sm:text-base">+15% improvement</p>
       </div>
-      <div class="bg-white/10 p-8 rounded-[2.5rem] backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
-        <h4 class="text-indigo-200 font-black uppercase text-xs tracking-widest mb-4">Habit Strength</h4>
-        <p class="text-2xl font-black mb-1">Morning Routine</p>
-        <p class="text-indigo-300 font-bold">Leo is 100% consistent!</p>
+      <div class="bg-white/10 p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-[2.5rem] backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
+        <h4 class="text-indigo-200 font-black uppercase text-xs tracking-widest mb-3 sm:mb-4">Habit Strength</h4>
+        <p class="text-lg sm:text-2xl font-black mb-1">Morning Routine</p>
+        <p class="text-indigo-300 font-bold text-sm sm:text-base">Leo is 100% consistent!</p>
       </div>
-      <div class="bg-white/10 p-8 rounded-[2.5rem] backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
-        <h4 class="text-indigo-200 font-black uppercase text-xs tracking-widest mb-4">Action Needed</h4>
-        <p class="text-2xl font-black mb-1">Room Tidiness</p>
-        <p class="text-yellow-400 font-bold italic">Mina needs a reminder</p>
+      <div class="bg-white/10 p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-[2.5rem] backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
+        <h4 class="text-indigo-200 font-black uppercase text-xs tracking-widest mb-3 sm:mb-4">Action Needed</h4>
+        <p class="text-lg sm:text-2xl font-black mb-1">Room Tidiness</p>
+        <p class="text-yellow-400 font-bold italic text-sm sm:text-base">Mina needs a reminder</p>
       </div>
     </div>
   </section>
