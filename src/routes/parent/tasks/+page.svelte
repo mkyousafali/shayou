@@ -108,7 +108,7 @@
       // Update task status to completed
       const { error: taskError } = await supabase
         .from('tasks')
-        .update({ status: 'completed' })
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', taskId);
 
       if (taskError) throw taskError;

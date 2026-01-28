@@ -38,20 +38,27 @@
 
   async function completeTask(taskId: string) {
     try {
-      const { error } = await supabase
+      console.log('Submitting task:', taskId);
+      const { data, error } = await supabase
         .from('tasks')
-        .update({ status: 'pending' }) // Children "submit" tasks, parents approve
-        .eq('id', taskId);
+        .update({ status: 'pending' })
+        .eq('id', taskId)
+        .select();
 
-      if (error) throw error;
+      console.log('Update response:', { data, error });
+      
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw new Error(`${error.message} (${error.code})`);
+      }
       
       // Update local state
       tasks = tasks.map(t => t.id === taskId ? { ...t, status: 'pending' } : t);
       
       showSuccessModal = true;
     } catch (e) {
-      console.error('Error updating task:', e);
-      errorMessage = 'Could not submit task. Please try again!';
+      console.error('Full error:', e);
+      errorMessage = e instanceof Error ? e.message : 'Could not submit task. Please try again!';
       showErrorModal = true;
     }
   }
